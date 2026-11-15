@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>VIP CARS 3D</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;user-select:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+body{background:#07090e;color:#fff;overflow:hidden;touch-action:none}
+canvas{display:block}
+#hud{position:fixed;top:10px;left:10px;right:130px;pointer-events:none;display:flex;flex-direction:column;gap:6px}
+.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.pill{background:rgba(10,14,24,0.92);border:1px solid #283552;padding:5px 10px;border-radius:10px;font-size:12px;font-weight:800}
+.hp-wrap{width:125px;background:rgba(10,14,24,0.92);border:1px solid #283552;border-radius:10px;padding:4px 8px;font-size:10px;font-weight:700}
+.hp-line{height:4px;background:#1a2236;border-radius:2px;margin-top:3px;overflow:hidden}
+#hp-fill{height:100%;width:100%;background:#00e676;transition:0.15s}
+#speedo{position:fixed;bottom:112px;right:14px;background:rgba(10,14,24,0.9);border:2px solid #00e5ff;border-radius:14px;padding:6px 12px;text-align:right;pointer-events:none;box-shadow:0 0 15px rgba(0,229,255,0.2)}
+#spd-val{font-size:26px;font-weight:900;color:#00e5ff;line-height:1}
+#gear-tag{display:inline-block;background:#00e5ff;color:#05070d;padding:1px 5px;border-radius:4px;font-size:11px;font-weight:900;margin-right:4px}
+#radar{position:fixed;top:10px;right:10px;width:112px;height:112px;background:rgba(8,12,20,0.94);border:2px solid #00e5ff;border-radius:16px;pointer-events:none}
+#top-btns{position:fixed;top:128px;right:10px;display:flex;flex-direction:column;gap:5px;z-index:20}
+.t-btn{background:rgba(14,20,34,0.92);border:1px solid #324466;color:#fff;padding:6px 9px;border-radius:9px;font-size:11px;font-weight:700;text-align:center}
+#action-btn{display:none;position:fixed;bottom:118px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#00e676,#00b0ff);color:#05070d;font-weight:900;font-size:14px;padding:13px 22px;border:none;border-radius:14px;box-shadow:0 0 22px rgba(0,229,255,0.6);z-index:30}
+#drift-pop{display:none;position:fixed;top:72px;left:50%;transform:translateX(-50%);text-align:center;pointer-events:none}
+#drift-val{font-size:28px;font-weight:900;color:#ff9100;text-shadow:0 0 14px rgba(255,145,0,0.8)}
+.controls{position:fixed;bottom:14px;left:12px;right:12px;display:flex;justify-content:space-between;align-items:flex-end;pointer-events:none;z-index:25}
+.c-group{display:flex;gap:8px;pointer-events:auto}
+.c-btn{width:64px;height:64px;border-radius:16px;background:rgba(16,22,36,0.82);border:2px solid rgba(255,255,255,0.22);color:#fff;font-size:13px;font-weight:900;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1}
+.c-btn span{font-size:20px}
+.c-btn:active,.c-btn.act{background:rgba(0,229,255,0.45);border-color:#00e5ff;transform:scale(0.94)}
+.c-btn.gas{height:82px;width:68px;border-color:rgba(0,230,118,0.5)}
+.c-btn.rev{height:68px;border-color:rgba(255,23,68,0.5)}
+.c-btn.nit{width:52px;height:52px;border-color:rgba(255,145,0,0.55)}
+.modal{display:none;position:fixed;inset:0;background:rgba(5,8,15,0.96);z-index:100;flex-direction:column;padding:16px;overflow-y:auto}
+.m-head{display:flex;justify-content:space-between;align-items:center;padding-bottom:10px;border-bottom:1px solid #1e283d;margin-bottom:12px}
+.tabs{display:flex;gap:6px;margin-bottom:12px}
+.tab{flex:1;padding:9px;background:#121929;border:1px solid #24324f;border-radius:9px;text-align:center;font-size:12px;font-weight:700;color:#8fa4c9}
+.tab.act{background:#182640;border-color:#00e5ff;color:#00e5ff}
+.card{background:#0f1524;border:1px solid #212e4a;border-radius:12px;padding:12px;margin-bottom:9px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.card h4{font-size:14px;margin-bottom:3px}
+.card p{font-size:11px;color:#8fa4c9;line-height:1.3}
+.btn{padding:10px 13px;border:none;border-radius:9px;background:#00b0ff;color:#05070d;font-weight:800;font-size:12px;white-space:nowrap}
+.btn.gold{background:#ffd600}
+.btn.green{background:#00e676}
+.btn:disabled{background:#1c2436;color:#526385}
+</style>
+</head>
+<body>
+<div id="hud">
+  <div class="row">
+    <div class="pill" style="color:#00e676">💰 $<span id="mon-t">800</span></div>
+    <div class="pill" style="color:#ffd600">⭐ Ур.<span id="lvl-t">1</span></div>
+    <div class="pill" style="color:#ff5252" id="stars-t">☆☆☆☆☆</div>
+  </div>
+  <div class="row">
+    <div class="hp-wrap">🔧 Кузов <span id="hp-t">100%</span><div class="hp-line"><div id="hp-fill"></div></div></div>
+    <div class="pill" style="color:#ff9100" id="miss-t">📱 Свободная езда</div>
+  </div>
+</div>
+
+<div id="drift-pop"><div id="drift-val">0</div><div style="font-size:11px;color:#00e5ff;font-weight:800">ДРИФТ ОЧКИ</div></div>
+
+<div id="speedo">
+  <div><span id="gear-tag">D</span><span id="spd-val">0</span></div>
+  <div style="font-size:10px;color:#8fa4c9;font-weight:700">КМ/Ч • НИТРО <span id="nit-val">100</span>%</div>
+</div>
+
+<canvas id="radar" width="112" height="112"></canvas>
+
+<div id="top-btns">
+  <div class="t-btn" style="border-color:#00e5ff;color:#00e5ff" onclick="openGarageAnywhere()">🏎️ ГАРАЖ</div>
+  <div class="t-btn" onclick="openPhone()">📱 ЗАКАЗЫ</div>
+  <div class="t-btn" onclick="usePromo()">🎁 КОД</div>
+  <div class="t-btn" id="snd-btn" onclick="toggleSnd()">🔊 ЗВУК</div>
+</div>
+
+<button id="action-btn" onclick="triggerZoneAction()">ОТКРЫТЬ</button>
+<canvas id="game"></canvas>
+
+<div class="controls">
+  <div class="c-group">
+    <div class="c-btn" id="btn-l"><span>◀</span>ВЛЕВО</div>
+    <div class="c-btn" id="btn-r"><span>▶</span>ВПРАВО</div>
+  </div>
+  <div class="c-group" style="align-items:flex-end">
+    <div class="c-btn nit" id="btn-n"><span>🔥</span></div>
+    <div class="c-btn" id="btn-h" style="width:54px;height:58px;border-color:rgba(255,214,0,0.45)"><span>⚡</span>РУЧНИК</div>
+    <div class="c-btn rev" id="btn-b"><span>▼</span>НАЗАД</div>
+    <div class="c-btn gas" id="btn-g"><span>▲</span>ВПЕРЕД</div>
+  </div>
+</div>
+
+<div class="modal" id="main-modal">
+  <div class="m-head">
+    <div><h3 id="m-title" style="color:#00e5ff;font-size:18px">АВТОСАЛОН И ТЮНИНГ</h3><small style="color:#8fa4c9">Баланс: 💰 $<span id="m-mon">0</span> • Уровень <span id="m-lvl">1</span></small></div>
+    <button class="btn" style="background:#ff1744;color:#fff" onclick="closeModal()">ВЫЕХАТЬ ✖</button>
+  </div>
+  <div class="tabs" id="m-tabs">
+    <div class="tab act" onclick="setTab('cars',this)">🏎️ 12 Тачек</div>
+    <div class="tab" onclick="setTab('upg',this)">⚙️ Тюнинг</div>
+    <div class="tab" onclick="setTab('style',this)">🎨 Стайлинг</div>
+  </div>
+  <div id="m-body"></div>
+</div>
+
+<script>
+const c=document.getElementById('game'),ctx=c.getContext('2d');
+const rc=document.getElementById('radar'),rctx=rc.getContext('2d');
+let W=c.width=innerWidth,H=c.height=innerHeight;
+onresize=()=>{W=c.width=innerWidth;H=c.height=innerHeight;};
+
+const WORLD=10000,BLOCK=1000;
+let save=JSON.parse(localStorage.getItem('vipCars3D_3'))||{
+  mon:800,xp:0,lvl:1,car:0,owned:new Array(1).fill(0),
+  upg:{eng:1,exh:1,trb:1,hnd:1,arm:1},col:'#00e5ff',neon:'#00e5ff',snd:true,promos:[]
+};
+if(!Array.isArray(save.owned)||save.owned.length===0)save.owned=new Array(1).fill(0);
+
+const cars=[
+  {name:'ВАЗ 2107 «Боевая»',spd:7.5,acc:0.26,grip:0.935,turn:0.048,hp:100,lvl:1,cost:0,w:42,h:21,wing:false,desc:'Народная классика. Легкая и послушная в заносе.'},
+  {name:'Lada Priora «Опер»',spd:8.6,acc:0.30,grip:0.945,turn:0.050,hp:120,lvl:1,cost:1600,w:44,h:21,wing:false,desc:'Резвый городской седан с отличным стартом.'},
+  {name:'Toyota Mark II JZX100',spd:9.6,acc:0.34,grip:0.932,turn:0.052,hp:145,lvl:2,cost:4000,w:46,h:22,wing:true,desc:'Легендарный дрифт-самурай с мощным выхлопом.'},
+  {name:'Nissan Silvia S15',spd:10.4,acc:0.37,grip:0.930,turn:0.055,hp:140,lvl:2,cost:7500,w:44,h:21,wing:true,desc:'Идеальный баланс угла и контроля в заносе.'},
+  {name:'Subaru WRX STI',spd:11.0,acc:0.42,grip:0.955,turn:0.054,hp:175,lvl:3,cost:12500,w:44,h:22,wing:true,desc:'Полный привод: летит одинаково по асфальту и песку.'},
+  {name:'BMW M3 GTR',spd:11.8,acc:0.44,grip:0.950,turn:0.056,hp:180,lvl:4,cost:20000,w:45,h:22,wing:true,desc:'Культовый гоночный болид с визгом мотора.'},
+  {name:'Nissan GT-R R35',spd:12.6,acc:0.49,grip:0.960,turn:0.055,hp:200,lvl:4,cost:32000,w:46,h:23,wing:true,desc:'Годзилла дорог. Молниеносный разгон.'},
+  {name:'BMW M5 CS',spd:13.4,acc:0.52,grip:0.956,turn:0.056,hp:220,lvl:5,cost:48000,w:48,h:23,wing:false,desc:'Бизнес-ракета на 635 сил для трассы и города.'},
+  {name:'Mercedes G63 AMG',spd:12.2,acc:0.46,grip:0.962,turn:0.050,hp:380,lvl:6,cost:70000,w:48,h:25,wing:false,desc:'Бронированный гелик: сносит полицию как кегли.'},
+  {name:'Porsche 911 GT3 RS',spd:14.4,acc:0.56,grip:0.965,turn:0.060,hp:210,lvl:7,cost:110000,w:45,h:22,wing:true,desc:'Трековый хищник с огромным антикрылом.'},
+  {name:'Lamborghini Aventador',spd:15.4,acc:0.62,grip:0.965,turn:0.060,hp:230,lvl:8,cost:175000,w:47,h:24,wing:true,desc:'Безумный V12 с огненными прострелами выхлопа.'},
+  {name:'Bugatti Chiron VIP',spd:17.2,acc:0.70,grip:0.970,turn:0.062,hp:280,lvl:10,cost:320000,w:48,h:24,wing:true,desc:'Абсолютный гиперкар 450+ км/ч. Король карты.'}
+];
+
+const palette=['#00e5ff','#ff1744','#00e676','#ff9100','#ffd600','#d500f9','#ffffff','#2979ff','#1de9b6','#f50057'];
+let pl={x:5000,y:5000,vx:0,vy:0,ang:-1.57,steer:0,hp:100,maxHp:100,nit:100,drift:0,driftT:0,stars:0,heat:0,wasGas:false,backfireT:0};
+let keys={l:false,r:false,g:false,b:false,h:false,n:false};
+let buildings=[],places=[],traps=[],crates=[],traffic=[],cops=[],skids=[],smoke=[],flames=[];
+let activeZone=null,inModal=false,curTab='cars';
+let ax=null,engOsc=null,engGain=null,mission=null,race=null;
+
+function initAudio(){
+  if(ax)return;
+  try{
+    ax=new(window.AudioContext||window.webkitAudioContext)();
+    engOsc=ax.createOscillator();
+    engGain=ax.createGain();
+    let filter=ax.createBiquadFilter();
+    filter.type='lowpass';filter.frequency.value=260;
+    engOsc.type='sawtooth';engOsc.frequency.value=45;
+    engGain.gain.value=0.0001;
+    engOsc.connect(filter);filter.connect(engGain);engGain.connect(ax.destination);
+    engOsc.start();
+  }catch(e){}
+}
+
+function updateEngineSound(spd,maxSpd,isGas){
+  if(!ax||!engOsc||!engGain)return;
+  if(!save.snd||inModal){engGain.gain.setTargetAtTime(0.0001,ax.currentTime,0.05);return;}
+  if(ax.state==='suspended')ax.resume();
+  let ratio=Math.min(1,spd/maxSpd);
+  let targetFreq=42+ratio*135+(isGas?18:0)+(keys.n&&pl.nit>2?30:0);
+  let targetVol=0.025+ratio*0.04+(isGas?0.02:0);
+  engOsc.frequency.setTargetAtTime(targetFreq,ax.currentTime,0.06);
+  engGain.gain.setTargetAtTime(targetVol,ax.currentTime,0.06);
+}
+
+function playBackfire(){
+  if(!save.snd||!ax)return;
+  try{
+    let pops=1+Math.floor(Math.random()*save.upg.exh);
+    for(let i=0;i<pops;i++){
+      setTimeout(()=>{
+        if(!ax||!save.snd)return;
+        let o=ax.createOscillator(),g=ax.createGain();
+        o.type='square';
+        o.frequency.setValueAtTime(140+Math.random()*60,ax.currentTime);
+        o.frequency.exponentialRampToValueAtTime(35,ax.currentTime+0.09);
+        g.gain.setValueAtTime(0.08,ax.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.0001,ax.currentTime+0.09);
+        o.connect(g);g.connect(ax.destination);o.start();o.stop(ax.currentTime+0.09);
+      },i*75);
+    }
+  }catch(e){}
+}
+
+function snd(f,d,t='sine',v=0.04){
+  if(!save.snd)return;
+  try{
+    initAudio();if(ax.state==='suspended')ax.resume();
+    let o=ax.createOscillator(),g=ax.createGain();
+    o.type=t;o.frequency.value=f;g.gain.setValueAtTime(v,ax.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001,ax.currentTime+d);
+    o.connect(g);g.connect(ax.destination);o.start();o.stop(ax.currentTime+d);
+  }catch(e){}
+}
+
+function saveGame(){localStorage.setItem('vipCars3D_3',JSON.stringify(save));updateHud();}
+function addXp(v){
+  save.xp+=v;
+  if(save.xp>=save.lvl*200){save.xp-=save.lvl*200;save.lvl++;snd(780,0.25,'triangle',0.06);}
+  saveGame();
+}
+function getCarSpec(){return cars.at(save.car)||cars.at(0);}
+
+function initWorld(){
+  const sp=getCarSpec();
+  pl.maxHp=sp.hp+(save.upg.arm-1)*45;pl.hp=pl.maxHp;
+
+  for(let gx=2000;gx<8000;gx+=BLOCK){
+    for(let gy=2000;gy<8000;gy+=BLOCK){
+      if(gx===5000&&gy===5000)continue;
+      if(gx===7000&&gy===7000)continue;
+      let h3d=45+Math.random()*95;
+      let cols=['#141b29','#182133','#1b253b','#121826'];
+      buildings.push({x:gx+150,y:gy+150,w:BLOCK-300,h:BLOCK-300,z:h3d,col:cols.at(Math.floor(Math.random()*cols.length))});
+    }
+  }
+
+  places=[
+    {type:'garage',name:'ЦЕНТРАЛЬНЫЙ АВТОСАЛОН',x:5000,y:5000,r:105,col:'#00e5ff'},
+    {type:'garage',name:'ТЮНИНГ-АТЕЛЬЕ СЕВЕР',x:5000,y:1600,r:100,col:'#00e5ff'},
+    {type:'garage',name:'ДРИФТ-ГАРАЖ ПОРТ',x:7500,y:7500,r:100,col:'#00e5ff'},
+    {type:'garage',name:'БАЗА ПУСТЫНЯ',x:1200,y:5000,r:100,col:'#00e5ff'},
+    {type:'race',name:'ГОНКА: НОЧНОЙ СПРИНТ',x:6000,y:5000,r:90,col:'#ff9100',bet:500,prize:1800,id:1},
+    {type:'race',name:'ГОНКА: КОРОЛЬ АВТОБАНА',x:4000,y:1200,r:90,col:'#ff9100',bet:1500,prize:5200,id:2},
+    {type:'race',name:'ГОНКА: БЕЗУМИЕ ПУСТЫНИ',x:1200,y:3500,r:90,col:'#ff9100',bet:3500,prize:12500,id:3}
+  ];
+
+  traps=[
+    {x:3500,y:1000,rec:170},{x:6500,y:1000,rec:210},{x:5000,y:3000,rec:150},
+    {x:8500,y:5000,rec:190},{x:2500,y:7000,rec:180}
+  ];
+
+  for(let i=0;i<50;i++)spawnCrate();
+  for(let i=0;i<24;i++)spawnTraffic();
+  updateHud();
+}
+
+function spawnCrate(){
+  let x=400+Math.random()*(WORLD-800),y=400+Math.random()*(WORLD-800);
+  if(buildings.some(b=>x>b.x-30&&x<b.x+b.w+30&&y>b.y-30&&y<b.y+b.h+30))return spawnCrate();
+  crates.push({x,y,val:300+Math.floor(Math.random()*400)});
+}
+
+function spawnTraffic(){
+  let rx=(2+Math.floor(Math.random()*6))*BLOCK;
+  let ry=(2+Math.floor(Math.random()*6))*BLOCK;
+  let horiz=Math.random()<0.5;
+  const cols=['#546e7a','#78909c','#8d6e63','#5c6bc0','#26a69a','#7e57c2'];
+  traffic.push({
+    x:horiz?rx+Math.random()*800:rx,y:horiz?ry:ry+Math.random()*800,
+    ang:horiz?0:1.57,spd:2.8+Math.random()*1.6,col:cols.at(Math.floor(Math.random()*cols.length))
+  });
+}
+function bindBtn(id,k){
+  const el=document.getElementById(id);
+  el.addEventListener('touchstart',e=>{e.preventDefault();keys[k]=true;el.classList.add('act');});
+  el.addEventListener('touchend',e=>{e.preventDefault();keys[k]=false;el.classList.remove('act');});
+}
+bindBtn('btn-l','l');bindBtn('btn-r','r');bindBtn('btn-g','g');bindBtn('btn-b','b');bindBtn('btn-n','n');
+
+function toggleSnd(){
+  save.snd=!save.snd;
+  document.getElementById('snd-btn').textContent=save.snd?'🔊 ЗВУК':'🔇 БЕЗ ЗВУКА';
+  saveGame();
+}
+
+function usePromo(){
+  let c=(prompt('Введи промокод из ТГК (например TURBO):')||'').trim().toUpperCase();
+  if(!c)return;
+  if(save.promos.includes(c))return alert('Этот код уже использован!');
+  if(c==='TURBO'||c==='CARS'||c==='VIP'){
+    save.promos.push(c);save.mon+=3000;addXp(250);snd(780,0.25,'sine',0.06);
+    alert('🎁 Промокод активирован! +$3,000 и +250 XP!');
+  }else alert('❌ Неверный код!');
+}
+
+function updateHud(){
+  document.getElementById('mon-t').textContent=Math.floor(save.mon).toLocaleString();
+  document.getElementById('lvl-t').textContent=save.lvl;
+  document.getElementById('stars-t').textContent='★'.repeat(pl.stars)+'☆'.repeat(5-pl.stars);
+  document.getElementById('hp-t').textContent=Math.max(0,Math.ceil(pl.hp/pl.maxHp*100))+'%';
+  document.getElementById('hp-fill').style.width=Math.max(0,pl.hp/pl.maxHp*100)+'%';
+}
+
+function openPhone(){
+  if(race)return alert('Сначала закончите текущую гонку!');
+  if(mission){
+    if(confirm('Отменить текущий заказ доставки?')){mission=null;document.getElementById('miss-t').textContent='📱 Свободная езда';}
+    return;
+  }
+  let tx=800+Math.random()*(WORLD-1600),ty=800+Math.random()*(WORLD-1600);
+  let dist=Math.hypot(tx-pl.x,ty-pl.y);
+  let pay=Math.floor(dist*0.28)+350;
+  let time=Math.floor(dist/220)+18;
+  if(confirm(`📱 НОВЫЙ VIP-ЗАКАЗ!\nДистанция: ${Math.floor(dist/10)} м\nНаграда: $${pay}\nВремя: ${time} сек.\n\nПринять заказ?`)){
+    mission={x:tx,y:ty,pay,time,tick:0};
+    snd(620,0.15,'sine',0.05);
+  }
+}
+
+function startRace(p){
+  if(save.mon<p.bet)return alert(`Нужно $${p.bet} для взноса за участие!`);
+  save.mon-=p.bet;saveGame();
+  let pts=[];
+  for(let i=1;i<=6;i++){
+    let a=(i/6)*6.28;
+    pts.push({x:Math.max(500,Math.min(WORLD-500,p.x+Math.cos(a)*2200)),y:Math.max(500,Math.min(WORLD-500,p.y+Math.sin(a)*2200))});
+  }
+  const sp=getCarSpec();
+  let rivals=[];
+  for(let r=0;r<3;r++){
+    rivals.push({x:p.x+(r-1)*35,y:p.y+40,ang:-1.57,spd:sp.spd*(0.88+r*0.05),cp:0,col:r===0?'#ff1744':(r===1?'#ffd600':'#d500f9')});
+  }
+  race={pts,cp:0,prize:p.prize,rivals};
+  snd(750,0.2,'triangle',0.06);
+}
+
+function triggerZoneAction(){
+  if(!activeZone)return;
+  if(activeZone.type==='garage'){
+    inModal=true;pl.vx=0;pl.vy=0;
+    pl.hp=pl.maxHp;updateHud();
+    document.getElementById('m-title').textContent=activeZone.name;
+    document.getElementById('m-tabs').style.display='flex';
+    document.getElementById('main-modal').style.display='flex';
+    renderModal();
+  }else if(activeZone.type==='race'){
+    startRace(activeZone);
+  }
+}
+function closeModal(){inModal=false;document.getElementById('main-modal').style.display='none';}
+function setTab(t,el){curTab=t;document.querySelectorAll('.tab').forEach(x=>x.className='tab');el.className='tab act';renderModal();}
+function openGarageAnywhere(){
+  inModal=true;pl.vx=0;pl.vy=0;
+  pl.hp=pl.maxHp;updateHud();
+  document.getElementById('m-title').textContent='VIP АВТОСАЛОН И ТЮНИНГ';
+  document.getElementById('main-modal').style.display='flex';
+  renderModal();
+}
+
+function triggerZoneAction(){
+  if(!activeZone)return;
+  if(activeZone.type==='garage'){
+    openGarageAnywhere();
+    document.getElementById('m-title').textContent=activeZone.name;
+  }else if(activeZone.type==='race'){
+    startRace(activeZone);
+  }
+}
+function closeModal(){inModal=false;document.getElementById('main-modal').style.display='none';}
+function setTab(t,el){curTab=t;document.querySelectorAll('.tab').forEach(x=>x.className='tab');el.className='tab act';renderModal();}
+
+function selectOrBuyCar(i){
+  const item=cars.at(i);
+  if(save.owned.includes(i)){
+    save.car=i;
+    pl.maxHp=item.hp+(save.upg.arm-1)*45;pl.hp=pl.maxHp;
+    snd(600,0.15,'sine',0.05);saveGame();renderModal();return;
+  }
+  if(save.lvl<item.lvl)return alert(`Нужен ${item.lvl} уровень!`);
+  if(save.mon>=item.cost){
+    save.mon-=item.cost;save.owned.push(i);save.car=i;
+    pl.maxHp=item.hp+(save.upg.arm-1)*45;pl.hp=pl.maxHp;
+    snd(780,0.25,'sine',0.06);saveGame();renderModal();
+  }
+}
+
+function buyUpgrade(k,cost){
+  if(save.mon<cost)return;
+  save.mon-=cost;save.upg[k]++;
+  const item=getCarSpec();
+  pl.maxHp=item.hp+(save.upg.arm-1)*45;pl.hp=pl.maxHp;
+  snd(650,0.15,'sine',0.05);saveGame();renderModal();
+}
+
+function renderModal(){
+  document.getElementById('m-mon').textContent=Math.floor(save.mon).toLocaleString();
+  document.getElementById('m-lvl').textContent=save.lvl;
+  const b=document.getElementById('m-body');
+  if(curTab==='cars'){
+    b.innerHTML=cars.map((cr,i)=>{
+      let own=save.owned.includes(i),cur=save.car===i,locked=save.lvl<cr.lvl&&!own;
+      return `<div class="card"><div><h4>🏎️ ${cr.name} <span style="color:#ffd600">[Ур.${cr.lvl}]</span></h4><p>${cr.desc}<br>Скорость: ${Math.floor(cr.spd*27)} км/ч • Броня: ${cr.hp}</p></div>
+      <button class="btn ${cur?'green':(own?'':'gold')}" ${locked||(!own&&save.mon<cr.cost)?'disabled':''} onclick="selectOrBuyCar(${i})">${cur?'ВЫБРАНА':(own?'СЕСТЬ':(locked?'Ур.'+cr.lvl:'$'+cr.cost.toLocaleString()))}</button></div>`;
+    }).join('');
+  }else if(curTab==='upg'){
+    const list=[
+      {k:'eng',n:'🔥 Двигатель Stage 3',d:'Увеличивает максимальную скорость и тягу',base:500,max:8},
+      {k:'exh',n:'💥 Прямоток Pop & Bangs',d:'Больше огня и громких отстрелов из глушителя',base:400,max:5},
+      {k:'trb',n:'⚡ Двойной Турбонаддув',d:'Усиливает нитро и ускоряет его зарядку',base:450,max:8},
+      {k:'hnd',n:'🛞 Спортивная рейка и выворот',d:'Идеальная управляемость и контроль в заносе',base:400,max:8},
+      {k:'arm',n:'🛡️ Усиленный кузов',d:'+45 к прочности машины при авариях',base:350,max:8}
+    ];
+    b.innerHTML=list.map(u=>{
+      let lv=save.upg[u.k],cost=Math.floor(u.base*Math.pow(1.45,lv-1)),maxed=lv>=u.max;
+      return `<div class="card"><div><h4>${u.n} <span style="color:#00e5ff">[Ур.${lv}/${u.max}]</span></h4><p>${u.d}</p></div>
+      <button class="btn" ${maxed||save.mon<cost?'disabled':''} onclick="buyUpgrade('${u.k}',${cost})">${maxed?'МАКС':'$'+cost.toLocaleString()}</button></div>`;
+    }).join('');
+  }else{
+    b.innerHTML=`
+      <div class="card" style="flex-direction:column;align-items:flex-start">
+        <h4>🎨 Покраска кузова</h4>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">${palette.map(cl=>`<div onclick="save.col='${cl}';saveGame();renderModal()" style="width:36px;height:36px;border-radius:9px;background:${cl};border:${save.col===cl?'3px solid #fff':'1px solid #444'}"></div>`).join('')}</div>
+      </div>
+      <div class="card" style="flex-direction:column;align-items:flex-start">
+        <h4>💡 Неоновая подсветка днища</h4>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">${palette.map(cl=>`<div onclick="save.neon='${cl}';saveGame();renderModal()" style="width:36px;height:36px;border-radius:9px;background:${cl};border:${save.neon===cl?'3px solid #fff':'1px solid #444'}"></div>`).join('')}</div>
+      </div>`;
+  }
+}
+function addPoliceHeat(amt){
+  pl.heat=Math.min(500,pl.heat+amt);
+  let ns=Math.min(5,Math.floor(pl.heat/100));
+  if(ns>pl.stars){
+    pl.stars=ns;updateHud();snd(300,0.2,'sawtooth',0.05);
+    while(cops.length<pl.stars){
+      let a=Math.random()*6.28;
+      cops.push({x:pl.x+Math.cos(a)*650,y:pl.y+Math.sin(a)*650,ang:0,hp:100});
+    }
+  }
+}
+
+function loop(){
+  requestAnimationFrame(loop);
+  if(inModal)return;
+
+  const sp=getCarSpec();
+  const isDesert=pl.x<2000;
+  const maxSpd=(sp.spd+(save.upg.eng-1)*0.65)*(isDesert?0.86:1);
+  const maxRev=maxSpd*0.42;
+  const turnMax=sp.turn+(save.upg.hnd-1)*0.003;
+
+  let fx=Math.cos(pl.ang),fy=Math.sin(pl.ang),rx=-fy,ry=fx;
+  let fSpd=pl.vx*fx+pl.vy*fy;
+  let sSpd=pl.vx*rx+pl.vy*ry;
+  let spd=Math.hypot(pl.vx,pl.vy);
+
+  let targetSteer=0;
+  if(keys.l)targetSteer=-turnMax;
+  if(keys.r)targetSteer=turnMax;
+  pl.steer+=(targetSteer-pl.steer)*0.22;
+
+  if(spd>0.25){
+    let dir=fSpd>=-0.1?1:-1;
+    let speedFactor=Math.min(1,spd/3.5);
+    pl.ang+=pl.steer*speedFactor*dir;
+  }
+
+  let acc=0;
+  let isGas=false;
+  if(keys.g){
+    isGas=true;
+    acc=sp.acc+(save.upg.eng-1)*0.03;
+    if(fSpd<-0.3)acc*=2.2;
+  }else if(keys.b){
+    if(fSpd>0.4){acc=-0.42;}
+    else{acc=-0.22;}
+  }
+
+  if(pl.wasGas&&!isGas&&spd>4.5&&pl.backfireT<=0){
+    playBackfire();
+    pl.backfireT=45;
+    for(let k=0;k<4;k++){
+      flames.push({x:pl.x-fx*(sp.w/2+2)+rx*(k%2===0?-5:5),y:pl.y-fy*(sp.w/2+2)+ry*(k%2===0?-5:5),l:10});
+    }
+  }
+  pl.wasGas=isGas;
+  if(pl.backfireT>0)pl.backfireT--;
+
+  if(keys.n&&pl.nit>2&&keys.g){
+    acc*=1.75;pl.nit=Math.max(0,pl.nit-(0.65-save.upg.trb*0.05));
+    flames.push({x:pl.x-fx*(sp.w/2+3)-rx*5,y:pl.y-fy*(sp.w/2+3)-ry*5,l:8});
+    flames.push({x:pl.x-fx*(sp.w/2+3)+rx*5,y:pl.y-fy*(sp.w/2+3)+ry*5,l:8});
+  }else{
+    pl.nit=Math.min(100,pl.nit+(0.13+save.upg.trb*0.03));
+  }
+
+  pl.vx+=fx*acc;pl.vy+=fy*acc;
+  fx=Math.cos(pl.ang);fy=Math.sin(pl.ang);rx=-fy;ry=fx;
+  fSpd=pl.vx*fx+pl.vy*fy;sSpd=pl.vx*rx+pl.vy*ry;
+
+  fSpd*=keys.h?0.96:0.986;
+  let grip=keys.h?0.975:sp.grip;
+  sSpd*=grip;
+
+  if(fSpd>maxSpd)fSpd=maxSpd;
+  if(fSpd<-maxRev)fSpd=-maxRev;
+
+  pl.vx=fx*fSpd+rx*sSpd;
+  pl.vy=fy*fSpd+ry*sSpd;
+
+  pl.x=Math.max(40,Math.min(WORLD-40,pl.x+pl.vx));
+  pl.y=Math.max(40,Math.min(WORLD-40,pl.y+pl.vy));
+
+  updateEngineSound(spd,maxSpd,isGas);
+
+  let kmh=Math.floor(spd*27);
+  document.getElementById('spd-val').textContent=kmh;
+  document.getElementById('nit-val').textContent=Math.floor(pl.nit);
+  const gt=document.getElementById('gear-tag');
+  if(fSpd<-0.3){gt.textContent='R';gt.style.background='#ff1744';gt.style.color='#fff';}
+  else{gt.textContent='D';gt.style.background='#00e5ff';gt.style.color='#05070d';}
+  if(kmh>265&&Math.random()<0.03)addPoliceHeat(18);
+
+  buildings.forEach(b=>{
+    let hw=sp.w/2-2;
+    if(pl.x+hw>b.x&&pl.x-hw<b.x+b.w&&pl.y+hw>b.y&&pl.y-hw<b.y+b.h){
+      pl.vx*=-0.45;pl.vy*=-0.45;pl.x+=pl.vx*2;pl.y+=pl.vy*2;
+      pl.hp-=Math.floor(spd*1.4);pl.drift=0;updateHud();
+      snd(110,0.15,'sawtooth',0.06);
+    }
+  });
+
+  if(Math.abs(sSpd)>1.6&&fSpd>2.5){
+    pl.driftT=70;
+    pl.drift+=Math.floor(Math.abs(sSpd)*5*(save.car+1));
+    document.getElementById('drift-pop').style.display='block';
+    document.getElementById('drift-val').textContent=pl.drift.toLocaleString();
+    let bx=pl.x-fx*(sp.w/2-4),by=pl.y-fy*(sp.w/2-4);
+    skids.push({x1:bx+rx*8,y1:by+ry*8,x2:bx-rx*8,y2:by-ry*8,l:150});
+    if(skids.length>260)skids.shift();
+    if(Math.random()<0.55)smoke.push({x:bx,y:by,r:7+Math.random()*5,l:20,col:isDesert?'rgba(210,180,120,0.4)':'rgba(200,210,225,0.35)'});
+  }else if(pl.driftT>0){
+    pl.driftT--;
+    if(pl.driftT===0&&pl.drift>0){
+      let cash=Math.floor(pl.drift*0.22);
+      save.mon+=cash;addXp(Math.floor(pl.drift/35));
+      pl.drift=0;document.getElementById('drift-pop').style.display='none';
+      snd(660,0.16,'sine',0.05);
+    }
+  }
+
+  traffic.forEach(t=>{
+    t.x+=Math.cos(t.ang)*t.spd;t.y+=Math.sin(t.ang)*t.spd;
+    if(t.x>8000)t.x=2000;if(t.y>8000)t.y=2000;
+    if(Math.hypot(pl.x-t.x,pl.y-t.y)<34){
+      pl.vx*=-0.4;pl.vy*=-0.4;pl.hp-=10;updateHud();addPoliceHeat(45);
+      snd(130,0.15,'sawtooth',0.06);
+    }
+  });
+
+  if(pl.stars>0){
+    pl.heat=Math.max(0,pl.heat-0.18);
+    if(pl.heat===0){
+      let bonus=pl.stars*250;save.mon+=bonus;addXp(pl.stars*50);
+      pl.stars=0;cops=[];updateHud();snd(780,0.2,'sine',0.06);
+    }
+    cops.forEach(cp=>{
+      let ca=Math.atan2(pl.y-cp.y,pl.x-cp.x);cp.ang=ca;
+      let cSpd=maxSpd*0.84;
+      cp.x+=Math.cos(ca)*cSpd;cp.y+=Math.sin(ca)*cSpd;
+      if(Math.hypot(pl.x-cp.x,pl.y-cp.y)<34){
+        if(spd>cSpd*1.1&&sp.hp>=250){
+          cp.hp-=50;pl.vx*=0.8;pl.vy*=0.8;snd(140,0.15,'sawtooth',0.06);
+          if(cp.hp<=0){cp.x=pl.x+1500;cp.hp=100;save.mon+=350;saveGame();}
+        }else{
+          let fine=Math.min(save.mon,pl.stars*300);
+          save.mon-=fine;pl.stars=0;pl.heat=0;cops=[];pl.vx=0;pl.vy=0;
+          saveGame();snd(120,0.3,'sawtooth',0.07);
+          alert(`🚨 ПОЛИЦИЯ ЗАДЕРЖАЛА ВАС! Штраф: $${fine}`);
+        }
+      }
+    });
+  }
+
+  traps.forEach(tr=>{
+    if(Math.hypot(pl.x-tr.x,pl.y-tr.y)<65&&kmh>tr.rec){
+      let prize=(kmh-tr.rec)*12+250;
+      tr.rec=kmh;save.mon+=prize;addXp(45);addPoliceHeat(35);
+      snd(850,0.15,'sine',0.06);
+    }
+  });
+
+  crates.forEach((cr,i)=>{
+    if(Math.hypot(pl.x-cr.x,pl.y-cr.y)<36){
+      save.mon+=cr.val;addXp(30);crates.splice(i,1);spawnCrate();
+      snd(800,0.1,'sine',0.05);saveGame();
+    }
+  });
+
+  if(mission){
+    mission.tick++;
+    if(mission.tick>=60){mission.tick=0;mission.time--;}
+    let d=Math.floor(Math.hypot(mission.x-pl.x,mission.y-pl.y)/10);
+    document.getElementById('miss-t').textContent=`📦 До цели: ${d}м (${mission.time}с)`;
+    if(d<9){
+      save.mon+=mission.pay;addXp(80);mission=null;
+      document.getElementById('miss-t').textContent='📱 Заказ выполнен!';
+      snd(780,0.25,'sine',0.06);saveGame();
+    }else if(mission.time<=0){
+      mission=null;document.getElementById('miss-t').textContent='❌ Время вышло!';snd(150,0.2,'sawtooth',0.05);
+    }
+  }
+
+  if(race){
+    let target=race.pts.at(race.cp);
+    let d=Math.hypot(target.x-pl.x,target.y-pl.y);
+    document.getElementById('miss-t').textContent=`🏁 Точка ${race.cp+1}/${race.pts.length} (${Math.floor(d/10)}м)`;
+    if(d<95){
+      race.cp++;snd(700,0.1,'sine',0.05);
+      if(race.cp>=race.pts.length){
+        save.mon+=race.prize;addXp(150);race=null;
+        document.getElementById('miss-t').textContent='🏆 ПОБЕДА В ГОНКЕ!';
+        snd(880,0.3,'sine',0.07);saveGame();
+      }
+    }
+    if(race){
+      race.rivals.forEach(rv=>{
+        let rt=race.pts.at(rv.cp);
+        let ra=Math.atan2(rt.y-rv.y,rt.x-rv.x);rv.ang=ra;
+        rv.x+=Math.cos(ra)*rv.spd;rv.y+=Math.sin(ra)*rv.spd;
+        if(Math.hypot(rt.x-rv.x,rt.y-rv.y)<95){
+          rv.cp++;
+          if(rv.cp>=race.pts.length&&race){
+            race=null;document.getElementById('miss-t').textContent='💨 Соперник финишировал первым!';snd(150,0.25,'sawtooth',0.06);
+          }
+        }
+      });
+    }
+  }
+
+  if(pl.hp<=0){
+    pl.x=5000;pl.y=5000;pl.vx=0;pl.vy=0;pl.hp=pl.maxHp;pl.stars=0;pl.heat=0;cops=[];
+    save.mon=Math.max(0,save.mon-250);saveGame();
+    alert('💥 МАШИНА РАЗБИТА! Эвакуатор доставил вас в центральный гараж (-$250).');
+  }
+
+  activeZone=places.find(p=>Math.hypot(pl.x-p.x,pl.y-p.y)<p.r);
+  const ab=document.getElementById('action-btn');
+  if(activeZone&&!race){
+    ab.style.display='block';
+    ab.textContent=activeZone.type==='garage'?'🔧 ВОЙТИ В ГАРАЖ':`🏁 ГОНКА (Взнос $${activeZone.bet})`;
+  }else ab.style.display='none';
+  let cx=W/2-pl.x,cy=H/2-pl.y;
+  ctx.fillStyle='#131720';ctx.fillRect(0,0,W,H);
+  ctx.save();ctx.translate(cx,cy);
+
+  ctx.fillStyle='#2a2117';ctx.fillRect(0,0,2000,WORLD);
+  ctx.fillStyle='#0d131f';ctx.fillRect(2000,0,WORLD-2000,2000);
+  ctx.fillStyle='#151b26';ctx.fillRect(6800,6800,3200,3200);
+
+  ctx.strokeStyle='#2b3447';ctx.lineWidth=4;
+  for(let g=2000;g<=8000;g+=BLOCK){
+    ctx.beginPath();ctx.moveTo(g,2000);ctx.lineTo(g,8000);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(2000,g);ctx.lineTo(8000,g);ctx.stroke();
+  }
+  ctx.strokeStyle='#00e5ff';ctx.lineWidth=6;ctx.strokeRect(2000,900,8000,200);
+
+  skids.forEach(s=>{ctx.strokeStyle='rgba(6,8,12,'+(s.l/150*0.65)+')';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(s.x1,s.y1);ctx.lineTo(s.x2,s.y2);ctx.stroke();s.l--;});
+
+  places.forEach(p=>{
+    ctx.strokeStyle=p.col;ctx.lineWidth=3;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,6.28);ctx.stroke();
+    ctx.fillStyle='rgba(0,229,255,0.08)';ctx.fill();
+    ctx.fillStyle='#fff';ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillText(p.name,p.x,p.y);
+  });
+
+  traps.forEach(tr=>{
+    ctx.strokeStyle='#ff1744';ctx.lineWidth=2;ctx.beginPath();ctx.arc(tr.x,tr.y,60,0,6.28);ctx.stroke();
+    ctx.fillStyle='#ff5252';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText(`📷 РАДАР >${tr.rec} КМ/Ч`,tr.x,tr.y);
+  });
+
+  crates.forEach(cr=>{ctx.fillStyle='#ffd600';ctx.fillRect(cr.x-10,cr.y-10,20,20);ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.strokeRect(cr.x-10,cr.y-10,20,20);});
+
+  if(mission){
+    ctx.strokeStyle='#00e676';ctx.lineWidth=4;ctx.beginPath();ctx.arc(mission.x,mission.y,75,0,6.28);ctx.stroke();
+    ctx.fillStyle='#00e676';ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText('📦 ТОЧКА ДОСТАВКИ',mission.x,mission.y);
+  }
+
+  function drawCar3D(x,y,ang,w,h,col,neon,wing,isCop,isRev,isBrake){
+    ctx.save();ctx.translate(x,y);ctx.rotate(ang);
+    if(neon){ctx.shadowColor=neon;ctx.shadowBlur=18;}
+    ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(-w/2-3,-h/2+4,w+6,h);
+    ctx.fillStyle=col;ctx.fillRect(-w/2,-h/2,w,h);
+    ctx.shadowBlur=0;
+    ctx.fillStyle='#0b0f17';ctx.fillRect(-w*0.18,-h*0.4,w*0.42,h*0.8);
+    ctx.fillStyle=col;ctx.fillRect(-w*0.12,-h*0.34,w*0.26,h*0.68);
+    if(wing){ctx.fillStyle='#111';ctx.fillRect(-w/2-2,-h*0.46,4,h*0.92);}
+    if(isCop){
+      ctx.fillStyle=Math.floor(Date.now()/110)%2===0?'#ff1744':'#2979ff';
+      ctx.fillRect(-3,-h*0.38,6,h*0.76);
+    }
+    ctx.fillStyle='#fff9c4';ctx.fillRect(w/2-2,-h*0.42,3,4);ctx.fillRect(w/2-2,h*0.42-4,3,4);
+    ctx.fillStyle=isRev?'#ffffff':(isBrake?'#ff1744':'#880e4f');
+    ctx.fillRect(-w/2-1,-h*0.42,3,4);ctx.fillRect(-w/2-1,h*0.42-4,3,4);
+    ctx.restore();
+  }
+
+  if(race){
+    let t=race.pts.at(race.cp);
+    ctx.strokeStyle='#ff9100';ctx.lineWidth=5;ctx.beginPath();ctx.arc(t.x,t.y,90,0,6.28);ctx.stroke();
+    race.rivals.forEach(rv=>drawCar3D(rv.x,rv.y,rv.ang,rv.w,rv.h,rv.col,null,true,false,false,false));
+  }
+
+  traffic.forEach(t=>drawCar3D(t.x,t.y,t.ang,40,20,t.col,null,false,false,false,false));
+  cops.forEach(cp=>drawCar3D(cp.x,cp.y,cp.ang,44,22,'#1c2538','#2979ff',false,true,false,false));
+  drawCar3D(pl.x,pl.y,pl.ang,sp.w,sp.h,save.col,save.neon,sp.wing,false,fSpd<-0.3,keys.b);
+  flames.forEach((fl,i)=>{
+    fl.l--;
+    ctx.fillStyle=fl.l>5?'#00e5ff':'#ff9100';
+    ctx.beginPath();ctx.arc(fl.x,fl.y,fl.l*0.6,0,6.28);ctx.fill();
+    if(fl.l<=0)flames.splice(i,1);
+  });
+
+  smoke.forEach((sm,i)=>{sm.l--;sm.r+=0.3;ctx.fillStyle=sm.col;ctx.beginPath();ctx.arc(sm.x,sm.y,sm.r,0,6.28);ctx.fill();if(sm.l<=0)smoke.splice(i,1);});
+
+  buildings.forEach(b=>{
+    if(Math.abs(b.x+b.w/2-pl.x)>W||Math.abs(b.y+b.h/2-pl.y)>H)return;
+    let dx=((b.x+b.w/2)-pl.x)*0.12;
+    let dy=((b.y+b.h/2)-pl.y)*0.12;
+    ctx.fillStyle='#0a0e17';
+    ctx.beginPath();
+    ctx.moveTo(b.x,b.y);ctx.lineTo(b.x+dx,b.y+dy);
+    ctx.lineTo(b.x+b.w+dx,b.y+dy);ctx.lineTo(b.x+b.w,b.y);ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(b.x,b.y+b.h);ctx.lineTo(b.x+dx,b.y+b.h+dy);
+    ctx.lineTo(b.x+b.w+dx,b.y+b.h+dy);ctx.lineTo(b.x+b.w,b.y+b.h);ctx.fill();
+    ctx.fillStyle='#101624';
+    ctx.beginPath();
+    ctx.moveTo(b.x,b.y);ctx.lineTo(b.x+dx,b.y+dy);
+    ctx.lineTo(b.x+dx,b.y+b.h+dy);ctx.lineTo(b.x,b.y+b.h);ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(b.x+b.w,b.y);ctx.lineTo(b.x+b.w+dx,b.y+dy);
+    ctx.lineTo(b.x+b.w+dx,b.y+b.h+dy);ctx.lineTo(b.x+b.w,b.y+b.h);ctx.fill();
+
+    ctx.fillStyle=b.col;ctx.fillRect(b.x+dx,b.y+dy,b.w,b.h);
+    ctx.strokeStyle='#2a3959';ctx.lineWidth=3;ctx.strokeRect(b.x+dx,b.y+dy,b.w,b.h);
+  });
+
+  ctx.restore();
+
+  rctx.clearRect(0,0,112,112);
+  rctx.fillStyle='rgba(255,193,7,0.15)';rctx.fillRect(0,0,22,112);
+  places.forEach(p=>{rctx.fillStyle=p.col;rctx.fillRect(p.x/WORLD*112-2.5,p.y/WORLD*112-2.5,5,5);});
+  cops.forEach(cp=>{rctx.fillStyle='#2979ff';rctx.fillRect(cp.x/WORLD*112-2,cp.y/WORLD*112-2,4,4);});
+  if(mission){rctx.fillStyle='#00e676';rctx.beginPath();rctx.arc(mission.x/WORLD*112,mission.y/WORLD*112,4,0,6.28);rctx.fill();}
+  if(race){let t=race.pts.at(race.cp);rctx.fillStyle='#ff9100';rctx.beginPath();rctx.arc(t.x/WORLD*112,t.y/WORLD*112,4,0,6.28);rctx.fill();}
+  rctx.fillStyle='#fff';rctx.beginPath();rctx.arc(pl.x/WORLD*112,pl.y/WORLD*112,3,0,6.28);rctx.fill();
+}
+
+initWorld();
+loop();
+</script>
+</body>
+</html>
